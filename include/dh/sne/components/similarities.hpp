@@ -39,18 +39,23 @@ namespace dh::sne {
   public:
     using InputSimilrs = std::vector<util::NXBlock>;
     using InputVectors = std::vector<float>;
+    using InputKnnIDs  = std::vector<uint>;
+    using InputKnnDsts = std::vector<float>;
 
     // Constr/destr
     Similarities();
+#ifdef USE_FAISS
+    Similarities(const InputVectors& inputSimilarities, Params params);
+#endif // USE_FAISS
     Similarities(const InputSimilrs& inputSimilarities, Params params);
-    Similarities(const InputVectors& inputVectors, Params params);
+    Similarities(const InputKnnIDs& inputKnnIDs, const InputKnnDsts& inputKnnDists, Params params);
     ~Similarities();
 
     // Compute similarities
     void comp();
 
   private:
-    // Private delegating constructor handles components shared between the two data constructors
+    // Private delegating constructor handles components shared between the data constructors
     Similarities(Params params); 
     void comp_full();
     void comp_part();
@@ -86,7 +91,9 @@ namespace dh::sne {
     Params               _params;
     const float         *_dataPtr;
     const util::NXBlock *_blockPtr;
-    
+    const float         *_knnDistPtr;
+    const uint          *_knnIDPtr;
+
     // Objects
     util::EnumArray<BufferType, GLuint>           _buffers;
     util::EnumArray<ProgramType, util::GLProgram> _programs;

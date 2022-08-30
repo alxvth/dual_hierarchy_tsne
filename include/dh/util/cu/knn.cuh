@@ -23,6 +23,7 @@
  */
 
 #pragma once
+#ifdef USE_FAISS
 
 #include "dh/types.hpp"
 #include "dh/util/enum.hpp"
@@ -74,3 +75,5 @@ namespace dh::util {
     }
   };
 } // dh::util
+
+#endif // USE_FAISS

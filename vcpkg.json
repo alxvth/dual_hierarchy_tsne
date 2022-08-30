@@ -9,10 +9,6 @@
     },
     "glfw3",
     "glm",
-    {
-      "name": "faiss",
-      "features": [ "gpu" ]
-    },
     "indicators"
   ],
   "features": {
@@ -29,6 +25,12 @@
       "description": "Build demo application",
       "dependencies": [
         "cxxopts"
+      ]
+    },
+    "faiss" : {
+      "description": "Use faiss for internal knn computation",
+      "dependencies": [
+        { "name": "faiss", "features": [ "gpu" ] }
       ]
     }
   }

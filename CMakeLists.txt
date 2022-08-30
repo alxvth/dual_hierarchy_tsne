@@ -3,6 +3,7 @@ cmake_minimum_required (VERSION 3.21)
 # Specify project options
 option(BUILD_VIS "Build visualization library if ON" ON)
 option(BUILD_DEMO "Build demo application if ON; requires BUILD_VIS" ON)
+option(USE_FAISS "Use faiss for internal knn computation" ON)
 
 # Tell vcpkg to include required features depending on project options
 if(BUILD_VIS OR BUILD_DEMO)
@@ -10,6 +11,9 @@ if(BUILD_VIS OR BUILD_DEMO)
 endif()
 if(BUILD_DEMO)
   list(APPEND VCPKG_MANIFEST_FEATURES "demo")
+endif()
+if(USE_FAISS)
+  list(APPEND VCPKG_MANIFEST_FEATURES "faiss")
 endif()
 
 # Specify vcpkg toolchain file
@@ -36,7 +40,6 @@ find_package(date CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
-find_package(faiss CONFIG REQUIRED)
 find_package(indicators CONFIG REQUIRED)
 
 # Include optional third party libraries provided through vcpkg
@@ -45,6 +48,10 @@ if(BUILD_VIS OR BUILD_DEMO)
 endif()
 if(BUILD_DEMO)
   find_package(cxxopts CONFIG REQUIRED)
+endif()
+
+if(USE_FAISS)
+  find_package(faiss CONFIG REQUIRED)
 endif()
 
 # Include third party libraries built from source (or added as header only interfaces)
@@ -65,12 +72,19 @@ rsrcs_embed(shaders ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders)
 
 # Specify util library
 add_library_recurse(dh_util ${CMAKE_CURRENT_SOURCE_DIR}/src/util ${CMAKE_CURRENT_SOURCE_DIR}/include/dh/util)
-target_link_libraries(dh_util PUBLIC cub glad::glad glfw glm::glm indicators::indicators date::date faiss)
+target_link_libraries(dh_util PUBLIC cub glad::glad glfw glm::glm indicators::indicators date::date)
 
 # Specify sne library
 add_library_recurse(dh_sne ${CMAKE_CURRENT_SOURCE_DIR}/src/sne ${CMAKE_CURRENT_SOURCE_DIR}/include/dh/sne)
 target_link_libraries(dh_sne PRIVATE dh_util ResourceEmbed indicators::indicators date::date)
 target_sources(dh_sne PRIVATE ${shaders}) # Add shaders to sne library
+
+# Specify optional knn computation features
+if(USE_FAISS)
+  target_link_libraries(dh_sne PRIVATE faiss)
+  target_compile_definitions(dh_sne PRIVATE USE_FAISS)
+  target_compile_definitions(dh_util PRIVATE USE_FAISS)
+endif()
 
 # Specify optional vis library
 if(BUILD_VIS OR BUILD_DEMO)

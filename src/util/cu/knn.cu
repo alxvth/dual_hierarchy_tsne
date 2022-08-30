@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#ifdef USE_FAISS
 
 #include <iostream>
 #include <cuda_runtime.h>
@@ -149,3 +150,5 @@ namespace dh::util {
     }
   }
 } // dh::util
+
+#endif // USE_FAISS

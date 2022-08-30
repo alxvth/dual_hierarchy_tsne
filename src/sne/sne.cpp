@@ -31,14 +31,21 @@ namespace dh::sne {
   SNE::SNE() 
   : _isInit(false) { }
 
+#ifdef USE_FAISS
   SNE::SNE(const InputVectors& inputVectors, Params params)
   : _params(params),
     _similarities(inputVectors, params),
     _isInit(true) { }
+#endif // USE_FAISS
 
   SNE::SNE(const InputSimilrs& inputSimilarities, Params params)
   : _params(params),
     _similarities(inputSimilarities, params),
+    _isInit(true) { }
+
+  SNE::SNE(const InputKnnIDs& inputKnnIDs, const InputKnnDsts& inputKnnDists, Params params)
+  : _params(params),
+    _similarities(inputKnnIDs, inputKnnDists, params),
     _isInit(true) { }
 
   SNE::~SNE() { }

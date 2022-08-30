@@ -28,7 +28,9 @@
 #include "dh/util/gl/error.hpp"
 #include "dh/util/gl/metric.hpp"
 #include "dh/util/cu/inclusive_scan.cuh"
+#ifdef USE_FAISS
 #include "dh/util/cu/knn.cuh"
+#endif // USE_FAISS
 #include <algorithm>
 #include <execution>
 #include <numeric>
@@ -41,19 +43,83 @@ namespace dh::sne {
   // Constants
   constexpr uint kMax = 192; // Don't exceeed this value for big vector datasets unless you have a lot of coffee and memopry
   
+  template <typename T>
+  class Span {
+      T* m_data;
+      size_t m_size;
+      size_t m_size_bytes;
+
+  public:
+      Span(T* ptr, size_t size)
+          : m_data(ptr),
+          m_size(size),
+          m_size_bytes(size * sizeof(T))
+      { }
+
+      Span(std::byte* ptr, size_t size_bytes)
+          : m_data((T*)ptr),
+          m_size(size_bytes / sizeof(T)),
+          m_size_bytes(size_bytes)
+      { }
+
+      T* data() {
+          return m_data;
+      }
+
+      T* begin() {
+          return m_data;
+      }
+
+      T* end() {
+          return m_data + m_size;
+      }
+
+      size_t size() {
+          return m_size;
+      }
+
+      size_t size_bytes() {
+          return m_size_bytes;
+      }
+
+      T& operator[](int i) { return m_data[i]; }
+      const T& operator[](int i) const { return m_data[i]; }
+  };
+
+  template <typename T>
+  Span<T> buffer_map_sp(GLuint i, uint flags) {
+      GLint size_bytes;
+      glGetNamedBufferParameteriv(i, GL_BUFFER_SIZE, &size_bytes);
+      return Span<T>((std::byte*)glMapNamedBuffer(i, flags), static_cast<size_t>(size_bytes));
+  }
+
   Similarities::Similarities()
-  : _isInit(false),_dataPtr(nullptr), _blockPtr(nullptr) { }
+  : _isInit(false),_dataPtr(nullptr), _blockPtr(nullptr), _knnDistPtr(nullptr), _knnIDPtr(nullptr) { }
 
   Similarities::Similarities(const InputSimilrs& inputSimilarities, Params params)
   : Similarities(params) {
     _dataPtr  = nullptr;
+    _knnDistPtr = nullptr;
+    _knnIDPtr = nullptr;
     _blockPtr = inputSimilarities.data();
   }
 
+#ifdef USE_FAISS
   Similarities::Similarities(const InputVectors& inputVectors, Params params)
   : Similarities(params) {
     _blockPtr  = nullptr;
+    _knnDistPtr = nullptr;
+    _knnIDPtr = nullptr;
     _dataPtr = inputVectors.data();
+  }
+#endif // USE_FAISS
+
+  Similarities::Similarities(const InputKnnIDs& inputKnnIDs, const InputKnnDsts& inputKnnDists, Params params)
+  : Similarities(params) {
+    _blockPtr  = nullptr;
+    _dataPtr = nullptr;
+    _knnIDPtr = inputKnnIDs.data();
+    _knnDistPtr = inputKnnDists.data();
   }
 
   Similarities::Similarities(Params params)
@@ -92,7 +158,7 @@ namespace dh::sne {
 
   void Similarities::comp() {
     runtimeAssert(isInit(), "Similarities::comp() called without proper initialization");
-    if (_dataPtr) {
+    if (_dataPtr || (_knnDistPtr && _knnIDPtr)) {
       comp_full();
     } else if (_blockPtr) {
       comp_part();
@@ -101,7 +167,6 @@ namespace dh::sne {
   
   void Similarities::comp_full() {
     runtimeAssert(isInit(), "Similarities::comp_full() called without proper initialization");
-    runtimeAssert(_dataPtr, "Simiarities::comp_full() called without proper input data");
 
     // Actual k for KNN is limited to kMax, and is otherwise (3 * perplexity + 1)
     const uint k = std::min(kMax, 3 * static_cast<uint>(_params.perplexity) + 1);
@@ -127,17 +192,42 @@ namespace dh::sne {
     util::ProgressBar progressBar(prefix + "Computing...");
     progressBar.setPostfix("Performing KNN search");
     progressBar.setProgress(0.0f);
-
-    // 1.
+    
+    // 1. KNN
+#ifdef USE_FAISS
+    if( !(_knnDistPtr && _knnIDPtr) )
     // Compute approximate KNN of each point, delegated to FAISS
     // Produces a fixed number of neighbors
     {
+      runtimeAssert(_dataPtr, "Simiarities::comp_full() called without proper input data");
+        
       util::KNN knn(
         _dataPtr,
         tempBuffers(TBufferType::eDistances),
         tempBuffers(TBufferType::eNeighbors),
         _params.n, k, _params.nHighDims);
       knn.comp();
+    }
+    else
+#endif // USE_FAISS
+    // Use pre-computed KNN
+    {
+      runtimeAssert(_knnIDPtr, "Simiarities::comp_full() called without proper pre-computed knn neighbor data");
+      runtimeAssert(_knnDistPtr, "Simiarities::comp_full() called without proper pre-computed knn distance data");
+
+      // Acquire mapped access to neighbour/distance data
+      auto neighbours_sp = buffer_map_sp<uint>(tempBuffers(TBufferType::eNeighbors), GL_WRITE_ONLY);
+      auto distances_sp = buffer_map_sp<float>(tempBuffers(TBufferType::eDistances), GL_WRITE_ONLY);
+      glAssert();
+
+      // Copy to temp buffer
+      std::copy(_knnIDPtr, _knnIDPtr + _params.n * k, neighbours_sp.data());
+      std::copy(_knnDistPtr, _knnDistPtr + _params.n * k, distances_sp.data());
+
+      // Release mapped access
+      //glUnmapNamedBuffer(tempBuffers(TBufferType::eNeighbors));
+      //glUnmapNamedBuffer(tempBuffers(TBufferType::eDistances));
+      //glAssert();
     }
 
     // Update progress bar
@@ -303,56 +393,6 @@ namespace dh::sne {
     // Poll twice so front/back timers are swapped
     glPollTimers(_timers.size(), _timers.data());
     glPollTimers(_timers.size(), _timers.data());
-  }
-
-  template <typename T>
-  class Span {
-    T*     m_data;
-    size_t m_size;
-    size_t m_size_bytes;
-
-  public:
-    Span(T *ptr, size_t size)
-    : m_data(ptr),
-      m_size(size),
-      m_size_bytes(size * sizeof(T))
-    { }
-
-    Span(std::byte *ptr, size_t size_bytes)
-    : m_data((T *) ptr),
-      m_size(size_bytes / sizeof(T)),
-      m_size_bytes(size_bytes)  
-    { }
-
-    T* data() {
-      return m_data;
-    }
-
-    T* begin() {
-      return m_data;
-    }
-
-    T* end() {
-      return m_data + m_size;
-    }
-
-    size_t size() {
-      return m_size;
-    }
-
-    size_t size_bytes() {
-      return m_size_bytes;
-    }
-
-    T &       operator[](int i)       { return m_data[i]; }
-    const T & operator[](int i) const { return m_data[i]; }
-  };
-
-  template <typename T>
-  Span<T> buffer_map_sp(GLuint i, uint flags) {
-    GLint size_bytes;
-    glGetNamedBufferParameteriv(i, GL_BUFFER_SIZE, &size_bytes);
-    return Span<T>((std::byte *) glMapNamedBuffer(i, flags), static_cast<size_t>(size_bytes));
   }
 
   void Similarities::comp_part() {

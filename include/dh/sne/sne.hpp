@@ -78,11 +78,17 @@ namespace dh::sne {
     using InputSimilrs = std::vector<util::NXBlock>;
     using InputVectors = std::vector<float>;
     using Embedding    = std::vector<float>;
+    using InputKnnIDs = std::vector<uint>;
+    using InputKnnDsts = std::vector<float>;
 
     // Constr/destr
     SNE();
     SNE(const InputSimilrs& inputSimilarities, Params params);
+    SNE(const InputKnnIDs& inputKnnIDs, const InputKnnDsts& inputKnnDists, Params params);
+#ifdef USE_FAISS
     SNE(const InputVectors& inputVectors, Params params);
+#endif // USE_FAISS
+
     ~SNE();
 
   private:
@@ -133,6 +139,7 @@ namespace dh::sne {
     dh_declare_noncopyable(SNE);
   };
 
+#ifdef USE_FAISS
   inline
   Result run(const SNE::InputVectors& data, 
              Params                   params, 
@@ -141,12 +148,23 @@ namespace dh::sne {
     sne.run();
     return sne.getResult(flags);
   }
+#endif // USE_FAISS
 
   inline
   Result run(const SNE::InputSimilrs& data, 
              Params                   params, 
              ResultFlags              flags = ResultFlags::eAll) {
     SNE sne(data, params);
+    sne.run();
+    return sne.getResult(flags);
+  }
+
+  inline
+  Result run(const SNE::InputKnnIDs& inputKnnIDs,
+             const SNE::InputKnnDsts& inputKnnDists,
+             Params                   params, 
+             ResultFlags              flags = ResultFlags::eAll) {
+    SNE sne(inputKnnIDs, inputKnnDists, params);
     sne.run();
     return sne.getResult(flags);
   }
