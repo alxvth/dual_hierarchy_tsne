@@ -50,6 +50,27 @@ namespace dh::sne {
 
   SNE::~SNE() { }
 
+  void SNE::init(const InputSimilrs& inputSimilarities, Params params) {
+      _params = params;
+      _similarities = Similarities(inputSimilarities, params);
+      _isInit = true;
+  }
+
+  void SNE::init(const InputKnnIDs& inputKnnIDs, const InputKnnDsts& inputKnnDists, Params params) {
+      _params = params;
+      _similarities = Similarities(inputKnnIDs, inputKnnDists, params);
+      _isInit = true;
+  }
+
+#ifdef USE_FAISS
+  void SNE::init(const InputVectors& inputVectors, Params params) {
+      _params = params;
+      _similarities = Similarities(inputVectors, params);
+      _isInit = true;
+  }
+#endif // USE_FAISS
+
+
   void SNE::run() {
     runtimeAssert(_isInit, "SNE::run() called before initialization");
     runSimilarities();

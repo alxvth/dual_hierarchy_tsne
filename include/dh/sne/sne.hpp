@@ -91,6 +91,12 @@ namespace dh::sne {
 
     ~SNE();
 
+    void init(const InputSimilrs& inputSimilarities, Params params);
+    void init(const InputKnnIDs& inputKnnIDs, const InputKnnDsts& inputKnnDists, Params params);
+#ifdef USE_FAISS
+    void init(const InputVectors& inputVectors, Params params);
+#endif // USE_FAISS
+
   private:
     // sne::Minimization<D> uses argument D to specify embedding dimensions but is identical in 
     // structure (on the CPU side). Define both in the same place, use std::visit for polymorphism 
