@@ -51,37 +51,49 @@ namespace dh::sne {
   }
 
   template <uint D>
-  Minimization<D>::Minimization(SimilaritiesBuffers similarities, Params params)
+  Minimization<D>::Minimization(SimilaritiesBuffers similarities, Params params, const std::vector<float>* initEmbedding)
   : _isInit(false), _similarities(similarities), _params(params), _iteration(0) {
     Logger::newt() << prefix << "Initializing...";
 
     // Generate randomized embedding data
     // TODO: look at CUDA-tSNE's approach, they have several options available for initialization
     std::vector<vec> embedding(_params.n, vec(0.f));
-    #pragma omp parallel
+    if (initEmbedding == nullptr)
     {
-      // Set up random distribution across threads
-      std::random_device device;
-      std::mt19937 eng(device());
-      eng.seed(_params.seed + omp_get_thread_num());
-      std::uniform_real_distribution<float> dist(0.f, 1.f);
-      
-      // Generate n random vectors
-      #pragma omp for
-      for (int i = 0; i < _params.n; ++i) {
-        vec v;
-        float r;
+#pragma omp parallel
+      {
+        // Set up random distribution across threads
+        std::random_device device;
+        std::mt19937 eng(device());
+        eng.seed(_params.seed + omp_get_thread_num());
+        std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-        do {
-          r = 0.f;
-          for (uint j = 0; j < D; ++j) {
-            v[j] = dist(eng) * 2.f - 1.f;
-          }
-          r = dot(v, v);
-        } while (r > 1.f || r == 0.f);
+        // Generate n random vectors
+#pragma omp for
+        for (int i = 0; i < _params.n; ++i) {
+          vec v;
+          float r;
 
-        embedding[i] = v * std::sqrt(-2.f * std::log(r) / r) * _params.rngRange;
+          do {
+            r = 0.f;
+            for (uint j = 0; j < D; ++j) {
+              v[j] = dist(eng) * 2.f - 1.f;
+            }
+            r = dot(v, v);
+          } while (r > 1.f || r == 0.f);
+
+          embedding[i] = v * std::sqrt(-2.f * std::log(r) / r) * _params.rngRange;
+        }
       }
+    }
+    else
+    {
+#pragma omp for
+      for (int i = 0; i < _params.n; ++i) {
+        for (int d = 0; d < D; ++d)
+          embedding[i][d] = &initEmbedding[i * D + d];
+      }
+
     }
 
     // Initialize shader programs

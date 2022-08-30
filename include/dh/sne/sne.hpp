@@ -97,6 +97,8 @@ namespace dh::sne {
     void init(const InputVectors& inputVectors, Params params);
 #endif // USE_FAISS
 
+    void setInitEmbedding(const Embedding& initEmb) { _initEmb = &initEmb; }
+
   private:
     // sne::Minimization<D> uses argument D to specify embedding dimensions but is identical in 
     // structure (on the CPU side). Define both in the same place, use std::visit for polymorphism 
@@ -113,6 +115,9 @@ namespace dh::sne {
     Similarities _similarities;
     Minimization _minimization;
     KLDivergence _klDivergence;
+
+    // pointer to vec of init embedding
+    const Embedding* _initEmb = nullptr;
     
   public:
     // Main computation functions
@@ -140,6 +145,7 @@ namespace dh::sne {
       swap(a._similarities, b._similarities);
       swap(a._minimization, b._minimization);
       swap(a._klDivergence, b._klDivergence);
+      swap(a._initEmb, b._initEmb);
     }
 
     dh_declare_noncopyable(SNE);

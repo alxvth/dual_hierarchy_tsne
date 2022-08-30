@@ -45,7 +45,7 @@ namespace dh::sne {
   public:
     // Constr/destr
     Minimization();
-    Minimization(SimilaritiesBuffers similarities, Params params);  
+    Minimization(SimilaritiesBuffers similarities, Params params, const std::vector<float>* initEmbedding = nullptr);
     ~Minimization();
 
     // Computation
