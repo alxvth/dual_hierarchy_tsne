@@ -70,10 +70,6 @@ namespace dh::sne {
   }
 #endif // USE_FAISS
 
-  void SNE::setInitEmbedding(const Embedding& initEmb) {
-
-  }
-
   void SNE::run() {
     runtimeAssert(_isInit, "SNE::run() called before initialization");
     runSimilarities();
@@ -91,9 +87,9 @@ namespace dh::sne {
 
     // After similarities are available, initialize other subcomponents
     if (_params.nLowDims == 2) {
-      _minimization = sne::Minimization<2>(_similarities.buffers(), _params, *_initEmb);
+      _minimization = sne::Minimization<2>(_similarities.buffers(), _params, _initEmb);
     } else if (_params.nLowDims == 3) {
-      _minimization = sne::Minimization<3>(_similarities.buffers(), _params, *_initEmb);
+      _minimization = sne::Minimization<3>(_similarities.buffers(), _params, _initEmb);
     }
     constexpr auto visit_buffers = [](const auto& m) { return m.buffers(); };
     _klDivergence = KLDivergence(_params, _similarities.buffers(), std::visit(visit_buffers, _minimization));

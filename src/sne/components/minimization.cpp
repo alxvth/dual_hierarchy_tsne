@@ -91,7 +91,7 @@ namespace dh::sne {
 #pragma omp for
       for (int i = 0; i < _params.n; ++i) {
         for (int d = 0; d < D; ++d)
-          embedding[i][d] = &initEmbedding[i * D + d];
+          embedding[i][d] = initEmbedding->data()[i * D + d];
       }
 
     }
