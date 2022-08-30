@@ -92,6 +92,7 @@ if(BUILD_VIS OR BUILD_DEMO)
   target_link_libraries(dh_vis PRIVATE imgui::imgui dh_util ResourceEmbed indicators::indicators date::date)
   target_sources(dh_vis PRIVATE ${shaders}) # Add shaders to vis library
   target_link_libraries(dh_sne PUBLIC dh_vis) # Link vis library against sne as it is available
+  target_compile_definitions(dh_sne PRIVATE BUILD_VIS)
 endif()
 
 # Specify optional dh_sne_cmd demo application
@@ -110,7 +111,10 @@ endif()
 
 # Configure OpenMP
 if(OpenMP_CXX_FOUND)
-  target_link_libraries(dh_vis  PUBLIC OpenMP::OpenMP_CXX)
   target_link_libraries(dh_sne  PUBLIC OpenMP::OpenMP_CXX)
   target_link_libraries(dh_util PUBLIC OpenMP::OpenMP_CXX)
+  
+  if(BUILD_VIS OR BUILD_DEMO)
+	target_link_libraries(dh_vis  PUBLIC OpenMP::OpenMP_CXX)
+  endif()
 endif()

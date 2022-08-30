@@ -32,7 +32,9 @@
 #include "dh/util/logger.hpp"
 #include "dh/util/gl/error.hpp"
 #include "dh/util/gl/metric.hpp"
+#ifdef DH_ENABLE_VIS_EMBEDDING
 #include "dh/vis/components/embedding_render_task.hpp"
+#endif // DH_ENABLE_VIS_EMBEDDING
 
 namespace dh::sne {
   // Logging shorthands

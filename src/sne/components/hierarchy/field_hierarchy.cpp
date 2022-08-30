@@ -25,7 +25,9 @@
 #include <resource_embed/resource_embed.hpp>
 #include "dh/constants.hpp"
 #include "dh/sne/components/hierarchy/field_hierarchy.hpp"
+#ifdef DH_ENABLE_VIS_FIELD_HIERARCHY
 #include "dh/vis/components/field_hierarchy_render_task.hpp"
+#endif // DH_ENABLE_VIS_FIELD_HIERARCHY
 #include "dh/util/logger.hpp"
 #include "dh/util/gl/error.hpp"
 #include "dh/util/gl/metric.hpp"
