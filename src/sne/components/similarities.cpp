@@ -195,7 +195,7 @@ namespace dh::sne {
     
     // 1. KNN
 #ifdef USE_FAISS
-    if( !(_knnDistPtr && _knnIDPtr) )
+    if(_dataPtr)
     // Compute approximate KNN of each point, delegated to FAISS
     // Produces a fixed number of neighbors
     {
