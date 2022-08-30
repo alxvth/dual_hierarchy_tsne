@@ -116,6 +116,8 @@ namespace dh::sne {
       swap(a._isInit, b._isInit);
       swap(a._params, b._params);
       swap(a._dataPtr, b._dataPtr);
+      swap(a._knnDistPtr, b._knnDistPtr);
+      swap(a._knnIDPtr, b._knnIDPtr);
       swap(a._blockPtr, b._blockPtr);
       swap(a._buffers, b._buffers);
       swap(a._programs, b._programs);
